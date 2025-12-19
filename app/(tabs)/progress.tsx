@@ -8,182 +8,81 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { CheckCircle, Lock, Star, Trophy } from 'lucide-react-native';
-import { getCurrentUser } from '@/lib/authService';
-import { getChildByUserId, createIndependentChildRecord } from '@/lib/familyService';
+
+// שימוש בשירות האימות החדש והמרוכז
+import { checkAuthState } from '@/lib/authService';
 import {
   getUserActiveTrackProgress,
   getTrackWithDays,
   getTrackDayExercises,
-  getActiveTrainingTracks,
-  startTrack,
   type UserProgressWithTrack,
   type TrackWithDays,
   type TrackDay,
 } from '@/lib/trackService';
-import { DayDetailModal } from '@/components/DayDetailModal';
 import { getExerciseById } from '@/lib/exercisesService';
+import { DayDetailModal } from '@/components/DayDetailModal';
 
 export default function ProgressScreen() {
   const router = useRouter();
+  
+  // State
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [childId, setChildId] = useState<string | null>(null);
   const [childName, setChildName] = useState<string>('');
+  const [childId, setChildId] = useState<string | null>(null);
+  
+  // Data State
   const [progress, setProgress] = useState<UserProgressWithTrack | null>(null);
   const [trackWithDays, setTrackWithDays] = useState<TrackWithDays | null>(null);
+  
+  // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDay, setSelectedDay] = useState<TrackDay | null>(null);
   const [dayExercises, setDayExercises] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    checkUserAccess();
+    loadData();
   }, []);
-
-  const checkUserAccess = async () => {
-    try {
-      const user = await getCurrentUser();
-      const userType = user?.user_metadata?.user_type;
-
-      if (userType === 'parent') {
-        router.replace('/(tabs)');
-        return;
-      }
-
-      loadData();
-    } catch (error) {
-      console.error('Error checking user access:', error);
-      router.replace('/(tabs)');
-    }
-  };
 
   const loadData = async () => {
     try {
-      setError(null);
-      const user = await getCurrentUser();
-      if (!user) {
-        router.replace('/auth/child-login');
+      // 1. קבלת המצב הנוכחי משירות האימות (מטפל גם בהורה וגם בילד)
+      const authState = await checkAuthState();
+      
+      if (!authState.isAuthenticated || !authState.activeChild) {
+        // אם אין משתמש או לא נבחר ילד, מחזיר למסך הראשי
+        router.replace('/');
         return;
       }
 
-      let child = await getChildByUserId(user.id);
+      const currentChild = authState.activeChild;
+      setChildId(currentChild.id);
+      setChildName(currentChild.name);
 
-      if (!child) {
-        const userType = user.user_metadata?.user_type;
-        if (userType === 'child_independent') {
-          const firstName = user.user_metadata?.first_name || 'ילד';
-          const age = user.user_metadata?.age || 10;
-          try {
-            child = await createIndependentChildRecord(user.id, firstName, age);
-          } catch (createError) {
-            console.error('Error creating child record:', createError);
-          }
-        }
-      }
-
-      if (child) {
-        setChildId(child.id);
-        setChildName(child.name);
-
-        let userProgress = await getUserActiveTrackProgress(child.id);
-
-        if (!userProgress) {
-          try {
-            const availableTracks = await getActiveTrainingTracks();
-            if (availableTracks.length > 0) {
-              await startTrack(child.id, availableTracks[0].id);
-              userProgress = await getUserActiveTrackProgress(child.id);
-            }
-          } catch (startError) {
-            console.error('Error auto-starting track:', startError);
-          }
-        }
-
-        setProgress(userProgress);
-
-        if (userProgress) {
-          const track = await getTrackWithDays(userProgress.track_id);
-          setTrackWithDays(track);
-        }
-      }
-    } catch (err) {
-      console.error('Error loading progress:', err);
-      setError('שגיאה בטעינת הנתונים');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStartTrack = async () => {
-    setStarting(true);
-    setError(null);
-
-    try {
-      let currentChildId = childId;
-
-      if (!currentChildId) {
-        const user = await getCurrentUser();
-        if (!user) {
-          setError('יש להתחבר מחדש');
-          return;
-        }
-
-        let child = await getChildByUserId(user.id);
-
-        if (!child) {
-          const userType = user.user_metadata?.user_type;
-          if (userType === 'child_independent') {
-            const firstName = user.user_metadata?.first_name || 'ילד';
-            const age = user.user_metadata?.age || 10;
-            try {
-              child = await createIndependentChildRecord(user.id, firstName, age);
-            } catch (createError) {
-              console.error('Error creating child record:', createError);
-              setError('שגיאה ביצירת פרופיל. נסה שוב.');
-              return;
-            }
-          } else {
-            setError('לא נמצא פרופיל ילד. אנא צור קשר עם התמיכה.');
-            return;
-          }
-        }
-
-        currentChildId = child.id;
-        setChildId(child.id);
-        setChildName(child.name);
-      }
-
-      if (!currentChildId) {
-        setError('לא נמצא פרופיל ילד');
-        return;
-      }
-
-      const availableTracks = await getActiveTrainingTracks();
-      if (availableTracks.length === 0) {
-        setError('אין מסלולים זמינים כרגע');
-        return;
-      }
-
-      await startTrack(currentChildId, availableTracks[0].id);
-      const userProgress = await getUserActiveTrackProgress(currentChildId);
-      setProgress(userProgress);
+      // 2. שליפת ההתקדמות של הילד
+      // הנחת עבודה: ה-Trigger בבסיס הנתונים כבר יצר את המסלול
+      const userProgress = await getUserActiveTrackProgress(currentChild.id);
 
       if (userProgress) {
+        setProgress(userProgress);
+        
+        // 3. שליפת פרטי המסלול המלאים
         const track = await getTrackWithDays(userProgress.track_id);
         setTrackWithDays(track);
       } else {
-        setError('שגיאה בטעינת המסלול. נסה שוב.');
+        console.log('No active track found for child ID:', currentChild.id);
+        // במצב תקין זה לא אמור לקרות אם ה-DB Trigger עובד
       }
     } catch (err) {
-      console.error('Error starting track:', err);
-      setError('שגיאה בהתחלת המסלול. נסה שוב.');
+      console.error('Error loading progress:', err);
+      Alert.alert('שגיאה', 'לא ניתן לטעון את נתוני ההתקדמות');
     } finally {
-      setStarting(false);
+      setLoading(false);
     }
   };
 
@@ -196,9 +95,10 @@ export default function ProgressScreen() {
   const handleDayPress = async (day: TrackDay) => {
     if (!progress || !childId) return;
 
-    // Check if day is accessible
+    // בדיקת הרשאות גישה ליום
     const isCompleted = progress.days_completed.includes(day.day_number);
     const isCurrentDay = day.day_number === progress.current_day;
+    // יום קודם הושלם או שזה היום הראשון
     const isPreviousCompleted = day.day_number === 1 || progress.days_completed.includes(day.day_number - 1);
 
     if (isCompleted || (isCurrentDay && isPreviousCompleted)) {
@@ -260,13 +160,6 @@ export default function ProgressScreen() {
     return 'locked';
   };
 
-  const calculateMonthProgress = () => {
-    if (!progress) return 0;
-    const today = new Date();
-    const dayOfMonth = today.getDate();
-    return Math.min(progress.days_completed.length, dayOfMonth);
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -275,6 +168,7 @@ export default function ProgressScreen() {
     );
   }
 
+  // מצב שגיאה / אין מסלול (לא אמור לקרות ב-Happy Path)
   if (!progress || !trackWithDays) {
     return (
       <View style={styles.container}>
@@ -289,24 +183,11 @@ export default function ProgressScreen() {
 
         <View style={styles.emptyState}>
           <Trophy size={64} color="#CCCCCC" />
-          <Text style={styles.emptyTitle}>טרם התחלת מסלול אימון</Text>
+          <Text style={styles.emptyTitle}>לא נמצא מסלול פעיל</Text>
           <Text style={styles.emptyDescription}>
-            לחץ על הכפתור כדי להתחיל את מסע האימון שלך
+            נראה שעדיין לא הוגדר עבורך מסלול אימון.
+            אנא פנה להורה או לתמיכה.
           </Text>
-          {error && (
-            <Text style={styles.errorText}>{error}</Text>
-          )}
-          <TouchableOpacity
-            style={[styles.startButton, starting && styles.startButtonDisabled]}
-            onPress={handleStartTrack}
-            disabled={starting}
-          >
-            {starting ? (
-              <ActivityIndicator size="small" color="#1A1A1A" />
-            ) : (
-              <Text style={styles.startButtonText}>התחל מסלול אימון</Text>
-            )}
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -327,7 +208,7 @@ export default function ProgressScreen() {
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>מסע האימון שלך</Text>
           <Text style={styles.headerSubtitle}>
-            יום {dayOfMonth} מתוך 30
+             שלום {childName} • יום {dayOfMonth} מתוך 30
           </Text>
           <View style={styles.progressBar}>
             <View style={styles.progressBarBg}>
@@ -339,7 +220,7 @@ export default function ProgressScreen() {
               />
             </View>
             <Text style={styles.progressText}>
-              {daysCompleted}/30 ימים הושלמו החודש
+              {daysCompleted}/30 ימים הושלמו
             </Text>
           </View>
         </View>
@@ -669,28 +550,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     textAlign: 'center',
-  },
-  startButton: {
-    backgroundColor: '#4FFFB0',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    marginTop: 16,
-    minWidth: 200,
-    alignItems: 'center',
-  },
-  startButtonDisabled: {
-    opacity: 0.7,
-  },
-  startButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#FF3B30',
-    textAlign: 'center',
-    marginTop: 8,
   },
 });
