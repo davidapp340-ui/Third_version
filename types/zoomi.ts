@@ -1,55 +1,45 @@
 import { Session } from '@supabase/supabase-js';
 
-// סוגי משתמשים במערכת (רק מי שיש לו יוזר ב-Supabase)
 export type UserRole = 'parent' | 'child_independent';
 
-// מבנה משפחה
 export interface Family {
   id: string;
+  parent_user_id: string;
   name: string;
-  created_at?: string;
+  created_at: string;
 }
 
-// פרופיל משתמש רשום (הורה או ילד עצמאי)
 export interface Profile {
-  id: string; // תואם ל-auth.users.id
-  family_id: string | null; // יכול להיות ריק בהתחלה לילד עצמאי
-  role: UserRole;
+  id: string;
   email: string;
-  first_name?: string;
-  created_at?: string;
+  full_name: string;
+  role: UserRole;
+  avatar_url?: string;
+  created_at: string;
+  updated_at: string;
 }
 
-// אובייקט ילד (השחקן)
 export interface Child {
   id: string;
-  family_id: string;
-  user_id: string | null; // null עבור ילד מקושר, מלא עבור ילד עצמאי
+  family_id: string | null;
+  user_id: string | null;
   name: string;
+  age?: number;
   avatar_url?: string;
-  
-  // נתוני התקדמות בסיסיים
-  current_step: number;
-  total_steps: number;
-  
-  // דגלים לשימוש ב-UI (אופציונליים)
-  is_linked_device?: boolean; // טרו אם זה מכשיר שצומד בקוד
+  is_independent: boolean;
+  linking_code?: string;
+  linking_code_expires_at?: string;
+  current_streak: number;
+  total_minutes_practiced: number;
+  created_at: string;
+  updated_at: string;
+  is_linked_device?: boolean;
 }
 
-// מצב האימות הגלובלי (State)
-// זה מה שה-AuthContext יחשוף לכל האפליקציה
 export interface AuthState {
-  // 1. משתמשים רשומים
-  session: Session | null; // הסשן הטכני של Supabase
-  userProfile: Profile | null; // הנתונים העסקיים (מי זה?)
-
-  // 2. ילד פעיל (הרלוונטי ביותר למשחק)
-  // עבור הורה: הילד שהוא בחר לצפות בו (או null)
-  // עבור ילד עצמאי: הוא עצמו
-  // עבור ילד מקושר: הילד שצומד למכשיר
+  session: Session | null;
+  userProfile: Profile | null;
   activeChild: Child | null;
-
-  // 3. סטטוס מערכת
   isLoading: boolean;
-  isInitialized: boolean; // האם סיימנו לבדוק הכל בטעינה?
+  isInitialized: boolean;
 }

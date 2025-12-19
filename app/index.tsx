@@ -1,37 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { checkAuthState } from '@/lib/authService';
+import { useAuth } from './context/AuthContext';
 
 export default function Index() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { session, userProfile, activeChild, isLoading, isInitialized } = useAuth();
 
   useEffect(() => {
-    async function init() {
-      const authState = await checkAuthState();
-      
-      if (authState.loading) return;
+    if (!isInitialized || isLoading) return;
 
-      if (authState.isAuthenticated) {
-        if (authState.userType === 'parent') {
-          router.replace('/(tabs)'); // או למסך בחירת ילד אם קיים
-        } else {
-          // ילד (מקושר או עצמאי) הולך ישר ל-Progress
-          router.replace('/(tabs)/progress');
-        }
+    if (session && userProfile) {
+      if (userProfile.role === 'parent') {
+        router.replace('/(tabs)');
       } else {
-        // לא מחובר -> מסך בחירת סוג כניסה
-        router.replace('/user-type');
+        router.replace('/(tabs)/progress');
       }
-      setLoading(false);
+    } else if (activeChild?.is_linked_device) {
+      router.replace('/(tabs)/progress');
+    } else {
+      router.replace('/user-type');
     }
-
-    init();
-  }, []);
+  }, [isInitialized, isLoading, session, userProfile, activeChild]);
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A1628' }}>
       <ActivityIndicator size="large" color="#4FFFB0" />
     </View>
   );
