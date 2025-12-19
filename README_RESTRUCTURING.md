@@ -1,15 +1,38 @@
 # Application Restructuring - Complete Guide
 
+## 🚨 CRITICAL STATUS ALERT
+
+**⚠️ APPLICATION CURRENTLY NON-FUNCTIONAL - IMMEDIATE ACTION REQUIRED ⚠️**
+
+The architectural restructuring is **complete and excellent**, but **13 screens need immediate migration** from deleted service files to the new architecture.
+
+### 📋 Critical Documents (READ FIRST)
+
+1. **[CRITICAL_STATUS.md](./CRITICAL_STATUS.md)** - ⚠️ Current status & why app is broken
+2. **[PRIORITY_ACTION_PLAN.md](./PRIORITY_ACTION_PLAN.md)** - 🛠️ Step-by-step fix instructions
+3. **[DATA_FLOW_ANALYSIS.md](./DATA_FLOW_ANALYSIS.md)** - 📊 Complete application analysis
+
+### Time to Fix: **2-3 hours** | Complexity: **Low** | Risk: **Low**
+
+---
+
 ## 🎯 What Was Done
 
 This application has undergone a **complete architectural restructuring** to transform it from a disorganized, patch-based codebase into a clean, maintainable, hierarchical architecture.
 
-## 📋 Quick Links
+## 📋 All Documentation Links
 
+### 🚨 Urgent (Fix Application)
+- **[CRITICAL_STATUS.md](./CRITICAL_STATUS.md)** - Current non-functional status
+- **[PRIORITY_ACTION_PLAN.md](./PRIORITY_ACTION_PLAN.md)** - How to fix (step-by-step)
+- **[DATA_FLOW_ANALYSIS.md](./DATA_FLOW_ANALYSIS.md)** - Complete analysis
+- **[MIGRATION_CHECKLIST.md](./MIGRATION_CHECKLIST.md)** - Track progress
+
+### 📚 Architecture Reference
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Complete architectural documentation
 - **[FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md)** - Detailed folder organization
+- **[ARCHITECTURE_DIAGRAM.md](./ARCHITECTURE_DIAGRAM.md)** - Visual diagrams
 - **[RESTRUCTURING_SUMMARY.md](./RESTRUCTURING_SUMMARY.md)** - Summary of changes
-- **[MIGRATION_CHECKLIST.md](./MIGRATION_CHECKLIST.md)** - Screen migration tracking
 
 ## ✅ Completed Work
 
